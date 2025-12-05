@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model user {
+  id                String   @id @default(auto()) @map("_id") @db.ObjectId
+  name              String?
+  phone_number      String   @unique
+  email             String?  @unique
+  notificationToken String?
+  pushToken         String?
+  ratings           Float    @default(0)
+  totalRides        Float    @default(0)
+  cratedAt          DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  rides             rides[]  @relation("UserRides")
+}
+
+enum VehicleType {
+  Car
+  Motorcycle
+  CNG
+}
+
+model driver {
+  id                  String      @id @default(auto()) @map("_id") @db.ObjectId
+  name                String
+  country             String
+  phone_number        String      @unique
+  email               String      @unique
+  vehicle_type        VehicleType
+  registration_number String      @unique
+  registration_date   String
+  driving_license     String
+  vehicle_color       String?
+  rate                String
+  notificationToken   String?
+  ratings             Float       @default(0)
+  warningCount        Int         @default(0)
+  totalEarning        Float       @default(0)
+  totalRides          Float       @default(0)
+  isBlocked           Boolean     @default(false)
+  pendingRides        Float       @default(0)
+  cancelRides         Float       @default(0)
+  status              String      @default("inactive")
+  wallet              Float       @default(0.0)
+  createdAt           DateTime    @default(now())
+  updatedAt           DateTime    @updatedAt
+  rides               rides[]     @relation("DriverRides")
+  pushToken           String? 
+}
+
+model rides {
+  id                      String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId                  String   @db.ObjectId
+  driverId                String   @db.ObjectId
+  charge                  Float
+  currentLocationName     String
+  destinationLocationName String
+  distance                String
+  status                  String
+  rating                  Float?
+  user                    user     @relation("UserRides", fields: [userId], references: [id])
+  driver                  driver   @relation("DriverRides", fields: [driverId], references: [id])
+  cratedAt                DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+}

@@ -1,0 +1,39 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "",
+  "main": "build/server.ts",
+  "type": "commonjs",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only server.ts",
+    "start": "node server.ts"
+  },
+  "keywords": [],
+  "author": "shahriar sajeeb",
+  "license": "ISC",
+  "dependencies": {
+    "@prisma/client": "^6.9.0",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.21.1",
+    "jsonwebtoken": "^9.0.2",
+    "nodemon": "^3.1.7",
+    "nylas": "^7.7.2",
+    "prisma": "^6.9.0",
+    "razorpay": "^2.9.6",
+    "server": "file:",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "twilio": "^5.3.3",
+    "typescript": "^5.6.3"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.7",
+    "@types/express": "^4.17.21",
+    "@types/ip": "^1.1.3",
+    "@types/jsonwebtoken": "^9.0.6",
+    "i": "^0.3.7",
+    "npm": "^10.8.2"
+  }
+}
