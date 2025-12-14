@@ -11,6 +11,33 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = twilio(accountSid, authToken, {
   lazyLoading: true,
 });
+export const getDriverForSocket = async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+
+    const driver = await prisma.driver.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        wallet: true,
+        status: true,
+        vehicle_type: true,
+        rate: true,
+        pushToken: true,
+        isBlocked: true,
+      },
+    });
+
+    if (!driver  || driver.isBlocked) {
+      return res.status(404).json({ message: "Driver not found" });
+    }
+
+    res.json(driver);
+  } catch (err) {
+    res.status(500).json({ message: "Internal error" });
+  }
+};
+
 export const saveDriverPushToken = async (req: any, res: Response) => {
   try {
     const { pushToken } = req.body;
@@ -800,5 +827,6 @@ export const logoutDriver = async (req: any, res: Response) => {
     });
   }
 };
+
 
 
