@@ -17,6 +17,7 @@ import {
   creditDriverWallet,
   topUpWallet,
   completeRideAndDeductWallet,
+  getDriverForSocket,
   saveDriverPushToken
 } from "../controllers/driver.controller";
 import { isAuthenticatedDriver } from "../middleware/isAuthenticated";
@@ -55,5 +56,8 @@ driverRouter.get("/driversdetail",getAllDrivers);
 driverRouter.get("/ridesall", getallRides);
 driverRouter.get("/update-status",isAuthenticatedDriver, logoutDriver)
 driverRouter.post("/push-token", isAuthenticatedDriver, saveDriverPushToken);
+driverRouter.get("/socket/:id", getDriverForSocket);
+
 
 export default driverRouter;
+
