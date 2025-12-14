@@ -510,29 +510,118 @@ export const updateDriverStatus = async (req: any, res: Response) => {
 };
 
 // get drivers data with id
+// export const getDriversById = async (req: Request, res: Response) => {
+//   try {
+//     const { ids } = req.query as any;
+//     console.log(ids,'ids')
+//     if (!ids) {
+//       return res.status(400).json({ message: "No driver IDs provided" });
+//     }
+
+//     const driverIds = ids.split(",");
+
+//     // Fetch drivers from database
+//     const drivers = await prisma.driver.findMany({
+//       where: {
+//         id: { in: driverIds },
+//       },
+//     });
+
+//     res.json(drivers);
+//   } catch (error) {
+//     console.error("Error fetching driver data:", error);
+//     res.status(500).json({ message: "Internal server error" });
+//   }
+// };
+const getDistanceKm = (
+  lat1: number,
+  lon1: number,
+  lat2: number,
+  lon2: number
+) => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
 export const getDriversById = async (req: Request, res: Response) => {
   try {
-    const { ids } = req.query as any;
-    console.log(ids,'ids')
-    if (!ids) {
-      return res.status(400).json({ message: "No driver IDs provided" });
+    const { ids, vehicleType, userLat, userLng } = req.query as any;
+
+    if (!ids || !vehicleType || !userLat || !userLng) {
+      return res.status(400).json({ message: "Missing params" });
     }
 
     const driverIds = ids.split(",");
 
-    // Fetch drivers from database
+    // 1️⃣ Fetch drivers
     const drivers = await prisma.driver.findMany({
       where: {
         id: { in: driverIds },
+        vehicle_type: vehicleType,
+        wallet: { gt: 1 },
+        status: "active",
+      },
+      select: {
+        id: true,
+        name: true,
+        latitude: true,
+        longitude: true,
+        vehicle_type: true,
+        rate: true,
+        pushToken: true,
       },
     });
 
-    res.json(drivers);
+    // 2️⃣ Fetch latest rides in ONE query
+    const latestRides = await prisma.rides.findMany({
+      where: { driverId: { in: driverIds } },
+      orderBy: { createdAt: "desc" },
+      distinct: ["driverId"],
+      select: {
+        driverId: true,
+        status: true,
+      },
+    });
+
+    const rideStatusMap = new Map(
+      latestRides.map(r => [r.driverId, r.status])
+    );
+
+    // 3️⃣ Filter drivers
+    const eligibleDrivers = drivers.filter(driver => {
+      const rideStatus = rideStatusMap.get(driver.id);
+
+      // busy driver
+      if (rideStatus && rideStatus !== "Completed") return false;
+
+      if (!driver.latitude || !driver.longitude) return false;
+
+      const distance = getDistanceKm(
+        Number(userLat),
+        Number(userLng),
+        driver.latitude,
+        driver.longitude
+      );
+
+      return distance <= 5;
+    });
+
+    res.json(eligibleDrivers);
   } catch (error) {
-    console.error("Error fetching driver data:", error);
+    console.error("Driver filter error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 };
+
 
 // creating new ride
 export const newRide = async (req: any, res: Response) => {
@@ -711,3 +800,4 @@ export const logoutDriver = async (req: any, res: Response) => {
     });
   }
 };
+
