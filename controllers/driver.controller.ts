@@ -357,7 +357,7 @@ export const verifyPhoneOtpForRegistration = async (
           code: otp,
         });
 
-      //await sendingOtpToEmail(req, res);
+      await sendingOtpToEmail(req, res);
     } catch (error) {
       console.log(error);
       res.status(400).json({
@@ -827,6 +827,7 @@ export const logoutDriver = async (req: any, res: Response) => {
     });
   }
 };
+
 
 
 
