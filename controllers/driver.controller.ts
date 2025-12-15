@@ -322,11 +322,12 @@ export const verifyPhoneOtpForLogin = async (
     if (verification.status !== "approved") {
       return res.status(400).json({
         success: false,
+        code: "INVALID_OTP",
         message: "Invalid OTP",
       });
     }
 
-    // 2️⃣ Check user in DB
+    // 2️⃣ Check driver in DB
     const driver = await prisma.driver.findUnique({
       where: { phone_number },
     });
@@ -334,21 +335,24 @@ export const verifyPhoneOtpForLogin = async (
     if (!driver) {
       return res.status(404).json({
         success: false,
+        code: "PHONE_NOT_REGISTERED",
         message: "Phone number not registered",
       });
     }
 
-    // 3️⃣ Send token only if driver exists
+    // 3️⃣ Success
     sendToken(driver, res);
 
   } catch (error) {
     console.error("OTP Verify Error:", error);
     res.status(500).json({
       success: false,
+      code: "SERVER_ERROR",
       message: "Server error",
     });
   }
 };
+
 // verifying phone otp for registration
 export const verifyPhoneOtpForRegistration = async (
   req: Request,
@@ -836,6 +840,7 @@ export const logoutDriver = async (req: any, res: Response) => {
     });
   }
 };
+
 
 
 
