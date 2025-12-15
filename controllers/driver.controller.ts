@@ -70,19 +70,23 @@ export const topUpWallet = async (req: Request, res: Response) => {
 
     const driver = await prisma.driver.findUnique({
       where: { id: driverId },
-      select: { wallet: true, isBlocked: true },
+      select: { wallet: true, isBlocked: true, name: true, email: true },
     });
 
     if (!driver) {
       return res.status(404).json({ success: false, message: "Driver not found" });
     }
 
-    const updated = await prisma.driver.update({
+    const newWallet = parseFloat(amount) + (driver.wallet || 0);
+
+    let unblockMessage = "";
+
+    const updatedDriver = await prisma.driver.update({
       where: { id: driverId },
       data: {
-        wallet: parseFloat(amount) + (driver.wallet || 0), // 👈 manual top-up
-        isBlocked: false, // auto-unblock
+        wallet: newWallet,
         warningCount: 0,
+        isBlocked: newWallet >= 0 ? false : driver.isBlocked,
       },
       select: {
         wallet: true,
@@ -90,11 +94,29 @@ export const topUpWallet = async (req: Request, res: Response) => {
       },
     });
 
+    // ✅ Send Nylas email if driver got unblocked
+    if (driver.isBlocked && updatedDriver.isBlocked === false) {
+      await nylas.messages.send({
+        identifier: process.env.USER_GRANT_ID!,
+        requestBody: {
+          to: [{ name: driver.name, email: driver.email }],
+          subject: "✅ Your profile is unblocked - AmbuRide",
+          body: `
+            <p>Hi ${driver.name},</p>
+            <p>Your wallet balance is now ₹${updatedDriver.wallet}. Your profile has been automatically <strong>unblocked</strong> and you can accept rides again.</p>
+            <p>Regards,<br>AmbuRide Team</p>
+          `,
+        },
+      });
+
+      unblockMessage = "Driver unblocked and email sent.";
+    }
+
     return res.status(200).json({
       success: true,
-      message: "Wallet topped up successfully",
-      wallet: updated.wallet,
-      isBlocked: updated.isBlocked,
+      message: `Wallet topped up successfully. ${unblockMessage}`,
+      wallet: updatedDriver.wallet,
+      isBlocked: updatedDriver.isBlocked,
     });
   } catch (error) {
     console.error("Top-up error:", error);
@@ -104,7 +126,6 @@ export const topUpWallet = async (req: Request, res: Response) => {
     });
   }
 };
-
 
 export const completeRideAndDeductWallet = async (
   req: Request,
@@ -840,6 +861,7 @@ export const logoutDriver = async (req: any, res: Response) => {
     });
   }
 };
+
 
 
 
