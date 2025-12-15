@@ -311,35 +311,44 @@ export const verifyPhoneOtpForLogin = async (
   try {
     const { phone_number, otp } = req.body;
 
-    try {
-      await client.verify.v2
-        .services(process.env.TWILIO_SERVICE_SID!)
-        .verificationChecks.create({
-          to: phone_number,
-          code: otp,
-        });
-
-      const driver = await prisma.driver.findUnique({
-        where: {
-          phone_number,
-        },
+    // 1️⃣ Verify OTP
+    const verification = await client.verify.v2
+      .services(process.env.TWILIO_SERVICE_SID!)
+      .verificationChecks.create({
+        to: phone_number,
+        code: otp,
       });
-      sendToken(driver, res);
-    } catch (error) {
-      console.log(error);
-      res.status(400).json({
+
+    if (verification.status !== "approved") {
+      return res.status(400).json({
         success: false,
-        message: "Something went wrong!",
+        message: "Invalid OTP",
       });
     }
+
+    // 2️⃣ Check user in DB
+    const driver = await prisma.driver.findUnique({
+      where: { phone_number },
+    });
+
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Phone number not registered",
+      });
+    }
+
+    // 3️⃣ Send token only if driver exists
+    sendToken(driver, res);
+
   } catch (error) {
-    console.log(error);
-    res.status(400).json({
+    console.error("OTP Verify Error:", error);
+    res.status(500).json({
       success: false,
+      message: "Server error",
     });
   }
 };
-
 // verifying phone otp for registration
 export const verifyPhoneOtpForRegistration = async (
   req: Request,
@@ -827,6 +836,7 @@ export const logoutDriver = async (req: any, res: Response) => {
     });
   }
 };
+
 
 
 
