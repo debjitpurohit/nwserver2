@@ -11,6 +11,32 @@ const authToken = process.env.TWILIO_AUTH_TOKEN;
 const client = twilio(accountSid, authToken, {
   lazyLoading: true,
 });
+// ================= INTERNAL STATUS UPDATE (FOR SOCKET / HEARTBEAT) =================
+export const updateDriverStatusInternal = async (
+  req: Request,
+  res: Response
+) => {
+  try {
+    const { driverId, status } = req.body;
+
+    if (!driverId || !status) {
+      return res.status(400).json({
+        success: false,
+        message: "driverId and status required",
+      });
+    }
+
+    await prisma.driver.update({
+      where: { id: driverId },
+      data: { status },
+    });
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error("Internal status update error:", err);
+    return res.status(500).json({ success: false });
+  }
+};
 export const getDriverForSocket = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -861,6 +887,7 @@ export const logoutDriver = async (req: any, res: Response) => {
     });
   }
 };
+
 
 
 
