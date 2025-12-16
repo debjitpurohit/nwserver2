@@ -261,28 +261,70 @@ export const creditDriverWallet = async (req: Request, res: Response) => {
       });
     }
 
-    const updatedDriver = await prisma.driver.update({
+    const driver = await prisma.driver.findUnique({
       where: { id: driverId },
-      data: {
-        wallet: {
-          increment: parseFloat(amount),
-        },
+      select: {
+        wallet: true,
+        isBlocked: true,
+        name: true,
+        email: true,
       },
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Wallet top-up successful",
-      wallet: updatedDriver.wallet,
+    if (!driver) {
+      return res.status(404).json({
+        success: false,
+        message: "Driver not found",
+      });
+    }
+
+    const newWallet = (driver.wallet || 0) + parseFloat(amount);
+
+    const updatedDriver = await prisma.driver.update({
+      where: { id: driverId },
+      data: {
+        wallet: newWallet,
+        warningCount: 0,
+        isBlocked: newWallet >= 0 ? false : driver.isBlocked,
+      },
+      select: {
+        wallet: true,
+        isBlocked: true,
+      },
     });
-  } catch (error: any) {
-    console.error("Wallet update error:", error);
+
+    // ✅ Send email only if driver got unblocked
+    if (driver.isBlocked && updatedDriver.isBlocked === false) {
+      await nylas.messages.send({
+        identifier: process.env.USER_GRANT_ID!,
+        requestBody: {
+          to: [{ name: driver.name, email: driver.email }],
+          subject: "✅ Your profile is unblocked - AmbuRide",
+          body: `
+            <p>Hi ${driver.name},</p>
+            <p>Your wallet balance is now ₹${updatedDriver.wallet}.</p>
+            <p>Your account has been <strong>automatically unblocked</strong> and you can accept rides again.</p>
+            <p>Regards,<br>AmbuRide Team</p>
+          `,
+        },
+      });
+    }
+
+    return res.status(200).json({
+      success: true,
+      message: "Wallet credited successfully",
+      wallet: updatedDriver.wallet,
+      isBlocked: updatedDriver.isBlocked,
+    });
+  } catch (error) {
+    console.error("Credit wallet error:", error);
     res.status(500).json({
       success: false,
-      message: "Failed to update wallet",
+      message: "Failed to credit wallet",
     });
   }
 };
+
 export const createRazorpayOrder = async (req: Request, res: Response) => {
   try {
     const { amount } = req.body;
@@ -887,6 +929,7 @@ export const logoutDriver = async (req: any, res: Response) => {
     });
   }
 };
+
 
 
 
